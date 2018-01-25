@@ -1,158 +1,64 @@
-#!/bin/env node
+var server_port = process.env.OPENSHIFT_NODEJS_PORT || 8080;
 
-var AppContainer = function () {
-  //  Scope.
-  var self = this;
-  /*  ================================================================  */
-  /*  Helper functions.                                                 */
-  /*  ================================================================  */
+var server_ip_address = process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1';
 
-  /**
-   *  Set up server IP address and port # using env variables/defaults.
-   */
-  self.setupVariables = function () {
-    //  Set the environment variables we need.
-    self.ipaddress = process.env.OPENSHIFT_NODEJS_IP;
-    self.port = process.env.OPENSHIFT_NODEJS_PORT || 8080;
+app.listen(server_port, server_ip_address, function () {
 
-    if (typeof self.ipaddress === "undefined") {
-      //  Log errors on OpenShift but continue w/ 127.0.0.1 - this
-      //  allows us to run/test the app locally.
-      console.warn('No OPENSHIFT_NODEJS_IP var, using 127.0.0.1');
-      self.ipaddress = "127.0.0.1";
-    }
-  };
+    console.log( "Listening on " + server_ip_address + ", server_port " + server_port  );
 
-  /**
-   *  terminator === the termination handler
-   *  Terminate server on receipt of the specified signal.
-   *  @param {string} sig  Signal to terminate on.
-   */
-  self.terminator = function (sig) {
-    if (typeof sig === "string") {
-      console.log('%s: Received %s - terminating sample app ...',
-        Date(Date.now()), sig);
-      process.exit(1);
-    }
-    console.log('%s: Node server stopped.', Date(Date.now()));
-  };
+});
 
+var app   = require('express')();
+var http = require('http').Server(app);
+var mysql = require('mysql');
+var bodyParser = require("body-parser");
 
-  /**
-   *  Setup termination handlers (for exit and a list of signals).
-   */
-  self.setupTerminationHandlers = function () {
-    //  Process on exit and signals.
-    process.on('exit', function () {
-      self.terminator();
-    });
+var connection = mysql.createConnection({
+		host     : 'sql11.freesqldatabase.com',
+		user     : 'sql11216060',
+		password : 'fDtHLdH1r5',
+		database : 'sql11216060',
+	});
+	
+app.use(bodyParser.urlencoded({ extended: false })); 
+app.use(bodyParser.json());
+var urlencodedParser = bodyParser.urlencoded({ extended: false });
+	
+app.get('/getdata',function(req,res){
+	var dane = {
+		"dane":""
+	};	
+	connection.query("SELECT * from foto",function(err, rows, fields){
+		if(rows.length != 0){
+			dane["dane"] = rows;
+			res.json(dane);
+		}else{
+			dane["dane"] = 'No dane Found..';
+			res.json(dane);
+		}
+	});
+});
 
-    // Removed 'SIGPIPE' from the list - bugz 852598.
-    ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT',
-      'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
-    ].forEach(function (element, index, array) {
-        process.on(element, function () {
-          self.terminator(element);
-        });
-      });
-  };
+app.post('/writedata', urlencodedParser, function(req,res){
+	
+	 var temp = req.body.temper;
+	var vdc = req.body.Vdc;
+	var pdc = req.body.Pdc;
+	 var vrms = req.body.Vrms;
+	var irms = req.body.Irms;
+	 var pac = req.body.Pac;
+	var eac = req.body.Eac;
+	var prom = req.body.prom;
+	
+    var post = {temp: temper, vdc: Vdc, pdc: Pdc, vrms: Vrms, irms: Irms, pas: Pac, eac: Eac, prom: prom};
 
-  /**
-   *  Initializes the sample application.
-   */
-  self.initialize = function () {
-    self.setupVariables();
-    self.setupTerminationHandlers();
-  };
-
-
-  self.setupServer = function () {
-
-    /**
-     * Module dependencies.
-     */
-    var app = require('./app');
-    var http = require('http');
-    /**
-     * Get port from environment and store in Express.
-     */
-    var port = normalizePort(self.port);
-    /**
-     * Create HTTP server.
-     */
-    var server = http.createServer(app);
-    /**
-     * Listen on provided port, on all network interfaces.
-     */
-    server.listen(self.port, self.ipaddress, function () {
-      console.log('%s: Node server started on %s:%d ...',
-        Date(Date.now()), self.ipaddress, self.port);
-    });
-    server.on('error', onError);
-    server.on('listening', onListening);
-
-    /**
-     * Normalize a port into a number, string, or false.
-     */
-    function normalizePort(val) {
-      var port = parseInt(val, 10);
-
-      if (isNaN(port)) {
-        // named pipe
-        return val;
-      }
-
-      if (port >= 0) {
-        // port number
-        return port;
-      }
-
-      return false;
-    }
-
-    /**
-     * Event listener for HTTP server "error" event.
-     */
-
-    function onError(error) {
-      if (error.syscall !== 'listen') {
-        throw error;
-      }
-
-      var bind = typeof port === 'string'
-        ? 'Pipe ' + port
-        : 'Port ' + port;
-
-      // handle specific listen errors with friendly messages
-      switch (error.code) {
-        case 'EACCES':
-          console.error(bind + ' requires elevated privileges');
-          process.exit(1);
-          break;
-        case 'EADDRINUSE':
-          console.error(bind + ' is already in use');
-          process.exit(1);
-          break;
-        default:
-          throw error;
-      }
-    }
-
-    /**
-     * Event listener for HTTP server "listening" event.
-     */
-
-    function onListening() {
-      var addr = server.address();
-      console.log('Server on port : ' + addr.port);
-    }
-  };
-};
-
-
-/**
- *  main():  Main code.
- */
-var zapp = new AppContainer();
-zapp.initialize();
-zapp.setupServer();
+	var query = connection.query('INSERT INTO foto SET ?', post, function (err, result) {
+		if (!err) {
+            console.log('Successfully added information.');
+        } else {
+            console.log(result);
+            console.log('Was not able to add information to database.');
+        }
+	});
+	
+});

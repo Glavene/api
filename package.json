@@ -23,5 +23,8 @@
 	  "mysql": "^2.5.5",
 
   },
-  
+  "devDependencies": {},
+  "bundleDependencies": [],
+  "private": true,
+  "main": "server.js"
 }

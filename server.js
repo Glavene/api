@@ -36,11 +36,13 @@ app.get('/',function(req,res){
 });	
 
 app.get('/getdata',function(req,res){
+	console.log( "getdata" );
 	var dane = {
 		"dane":""
 	};	
 	connection.query("SELECT * from foto",function(err, rows, fields){
 		if(rows.length != 0){
+			
 			dane["dane"] = rows;
 			res.json(dane);
 		}else{
